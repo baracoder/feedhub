@@ -19,26 +19,16 @@ try:
 except ImportError:
     print "Unable to find file config.py. Please rename config-sample.py first."
     FEEDS = []
-    
     import sys; sys.exit(1)
 
 
 def get_feed(url):
-    
-    #print 'Getting', url 
-
     opener = urllib2.build_opener()
     opener.addheaders = [('User-agent', USER_AGENT)]
-    
     request = opener.open(url)
-    
     data = request.read()
     request.close()
-    
     return data
-    
-
-# -----------------------------------------------------------
 
 
 class Item(object): 
@@ -71,7 +61,6 @@ def _get_item_details(entry):
     except IndexError:
         item.url = entry.getElementsByTagName('link')[0].firstChild.nodeValue
 
-
     try:
         item.id = entry.getElementsByTagName('id')[0].firstChild.nodeValue
     except IndexError:
@@ -83,19 +72,15 @@ def _get_item_details(entry):
         item.title = ''
 
     try:
-        item.teaser = entry.getElementsByTagName('content')[0].firstChild.nodeValue
+        item.content = entry.getElementsByTagName('content')[0].firstChild.nodeValue
     except IndexError:
         try:
-            item.teaser = entry.getElementsByTagName('summary')[0].firstChild.nodeValue
+            item.content = entry.getElementsByTagName('summary')[0].firstChild.nodeValue
         except IndexError:
             try:
-                item.teaser = entry.getElementsByTagName('description')[0].firstChild.nodeValue
+                item.content = entry.getElementsByTagName('description')[0].firstChild.nodeValue
             except IndexError:
-                item.teaser = ''
-
-
-    # @@TODO: get category
-    #item.categories = entry.getElementsByTagName('category')
+                item.content = ''
 
     try:
         date_published = entry.getElementsByTagName('published')[0].firstChild.nodeValue
@@ -122,118 +107,112 @@ def _get_item_details(entry):
 
 
 def parse_feed(the_feed):
-    
-   
     try:
-    	s = get_feed(the_feed[2])    
+        s = get_feed(the_feed[2])
     except urllib2.URLError:
-    	return []
-               
-    document = minidom.parseString(s)    
-    
-    #print document.documentElement 
-    
+        return []
+
+    document = minidom.parseString(s)
+
     # flavor? 
     if the_feed[3] == 'atom':
         items = _get_atom_entries(the_feed, document)
-    else:    
+    else:
         items = _get_rss_entries(the_feed, document)
-    
+
     document.unlink()
-    
+
     return items
 
 # -----------------------------------------------------------
 
 def format_delicious(item):
-        
     d = {
         'url':escape(item.url), 
         'permalink':escape(item.id), 
-            
         'title': escape(item.title), 
-        #'teaser':item.teaser
+        #'content':item.content
     }
-    
     return d
 
 
-import re 
+import re
 
 def linkify(text):
-
     r1 = r"(\b(http|https)://([-A-Za-z0-9+&@#/%?=~_()|!:,.;]*[-A-Za-z0-9+&@#/%=~_()|]))"
     #r2 = r"((^|\b)www\.([-A-Za-z0-9+&@#/%?=~_()|!:,.;]*[-A-Za-z0-9+&@#/%=~_()|]))"
 
     return re.sub(r1,r'<a href="\1">\1</a>',text)
-    
+
 def format_twitter(item):
-    
     d = {
         'permalink':escape(item.url), 
-            
         'title': linkify(item.title.lstrip('passiomatic:')), 
-        #'teaser':item.teaser
+        #'content':item.content
     }
-        
     return d
 
 
 def format_blog(item):
-
-    if item.teaser:
-        teaser = sanitizer.strip(item.teaser)[:config.TEASER_LEN] + '(&hellip;)'
+    if item.content:
+        content = sanitizer.strip(item.content)[:config.content_LEN] + '(&hellip;)'
     else:
-        teaser = ''
+        content = ''
 
     d = {
-        'permalink': escape(item.url), 
-            
+        'permalink': escape(item.url),
         'title': item.title, 
-        'teaser': teaser
+        'content': content
     }
-    
+    return d
+
+def format_gplus(item):
+
+    d = {
+        'permalink': escape(item.url),
+        'title': item.title,
+        'content': item.content
+    }
     return d
 
 
 TEMPLATES = {
 
-    config.DELICIOUS : ("""        
+    config.DELICIOUS : ("""
     <li class="clear">
         <h4>Bookmark</h4>
-            
-        <h3><a href="$url">$title</a>
-        </h3>    
-         
+        <h3><a href="$url">$title</a></h3>
         <div class="meta">
             $date from <a href="$permalink">$site_name</a>
-        </div>    
+        </div>
     </li>
     """, format_delicious),
-    
+
     config.TWITTER : ("""
     <li class="clear">  
-        
         <h4>Tweet</h4>
-    
-        <h3>$title
-        </h3>            
-        
-        <div class="meta">$date from <a href="$permalink">$site_name</a></div>    
+        <h3>$title</h3>
+        <div class="meta">$date from <a href="$permalink">$site_name</a></div>
     </li>
     """, format_twitter),
-    
+
     config.BLOG : ("""
     <li class="clear">
-        
         <h4>Post</h4>
-        
-        <h3><a href="$permalink">$title &mdash; $teaser</a>
-        </h3>
-        
-        <div class="meta">$date from <a href="$permalink">$site_name</a></div>    
+        <h3><a href="$permalink">$title &mdash; </a></h3>
+        <p>$content</p>
+        <div class="meta">$date from <a href="$permalink">$site_name</a></div>
     </li>
     """, format_blog),
+
+    config.GPLUS : ("""
+    <li class="clear">
+        <h4>google+ Post</h4>
+        <h3><a href="$permalink">$title</a></h3>
+        <p>$content</p>
+        <div class="meta">$date from <a href="$permalink">$site_name</a></div>
+    </li>
+    """, format_gplus),
 }
 
 # -----------------------------------------------------------
@@ -247,56 +226,36 @@ from string import Template
 
 import urlparse
 
-def get_friendly_name(url):     
+
+def get_friendly_name(url):
     return urlparse.urlsplit(url)[1]
     #return urlparse.urlsplit(url).hostname
 
+
 def generate_html(items):
-
-
     s = ''
     for item in items:
-        
         t, fn = TEMPLATES[item.the_feed[0]][0], TEMPLATES[item.the_feed[0]][1]
 
         s = s + Template(t).safe_substitute(
-            
             site_name=escape(get_friendly_name(item.the_feed[1])),
             date=item.date_published.strftime('%b %d, %Y'),
 
             **fn(item)
-                            
             )
-        
     return s
 
 
 if __name__ == "__main__":
-    
     items = []
-    
     html = ''
-    
     for feed in FEEDS:
         items.extend(parse_feed(feed))
-            
 
     items.sort(key=lambda i : i.date_published, reverse=True)
-        
     html = generate_html(items[:config.LIMIT]).encode('utf-8', 'replace')
-            
     #~ f = open('./_feed_items.html', 'w')
-    #~ f.write(html)        
+    #~ f.write(html)
     #~ f.close()
-    
     print html
-        
-        
-        
-
-        
-
-
-    
-    
 
