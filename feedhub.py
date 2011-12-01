@@ -43,93 +43,83 @@ def get_feed(url):
 
 class Item(object): 
     def __repr__(self): return getattr(self, 'title', 'Untitled').encode('utf-8', 'replace')
-        
     __str__ = __repr__
-
 
 
 def _get_atom_entries(the_feed, document):
-    
-    entries = document.getElementsByTagName('entry')
-    
-    items = []
-    
-    for entry in entries:
-        
-        item = Item()        
-        
-        item.the_feed = the_feed
-        item.url = entry.getElementsByTagName('link')[0].getAttribute('href')        
-        item.id = entry.getElementsByTagName('id')[0].firstChild.nodeValue
-        item.title = entry.getElementsByTagName('title')[0].firstChild.nodeValue
-        
-        item.teaser = entry.getElementsByTagName('content')[0].firstChild.nodeValue
-        #item.teaser = entry.getElementsByTagName('summary')[0].firstChild.nodeValue
+    return _get_items(the_feed, document, 'entry')
 
-        date_published = entry.getElementsByTagName('published')[0].firstChild.nodeValue
-        
-        try:
-            # 2008-10-27T11:06:52 (ignore time zone)
-            date_published = datetime(*(time.strptime(date_published[:19], '%Y-%m-%dT%H:%M:%S')[0:6]))
-        except ValueError:
-            date_published = datetime.now()
-        
-        item.date_published = date_published
-                        
-        items.append(item)
-        
-    return items
-
-
-
-class Category(object):  
-    
-    def __repr__(self): return getattr(self, 'title', 'Untitled').encode('utf-8', 'replace')
-        
-    __str__ = __repr__
-    
 
 def _get_rss_entries(the_feed, document):
-    
-    entries = document.getElementsByTagName('item')
-    
+    return _get_items(the_feed, document, 'item')
+
+
+def _get_items(the_feed, document, tag_name):
     items = []
-    
-    for entry in entries:
-        
-        item = Item()        
-        
+    for entry in document.getElementsByTagName(tag_name):
+        item = _get_item_details(entry)
         item.the_feed = the_feed
-        item.url = entry.getElementsByTagName('link')[0].firstChild.nodeValue  
+        items.append(item)
+
+    return items
+
+def _get_item_details(entry):
+    item = Item()
+
+    try:
+        item.url = entry.getElementsByTagName('link')[0].getAttribute('href')
+    except IndexError:
+        item.url = entry.getElementsByTagName('link')[0].firstChild.nodeValue
+
+
+    try:
+        item.id = entry.getElementsByTagName('id')[0].firstChild.nodeValue
+    except IndexError:
         item.id = entry.getElementsByTagName('guid')[0].firstChild.nodeValue
-        
+
+    try:
         item.title = entry.getElementsByTagName('title')[0].firstChild.nodeValue
-        
-        # @@TODO: get category
-        #item.categories = entry.getElementsByTagName('category')
-        
-        #TODO: fix empty content
-        #item.teaser = entry.getElementsByTagName('content')[0].firstChild.nodeValue
-        item.teaser = ''
-        #item.teaser = entry.getElementsByTagName('summary')[0].firstChild.nodeValue
+    except AttributeError:
+        item.title = ''
+
+    try:
+        item.teaser = entry.getElementsByTagName('content')[0].firstChild.nodeValue
+    except IndexError:
+        try:
+            item.teaser = entry.getElementsByTagName('summary')[0].firstChild.nodeValue
+        except IndexError:
+            try:
+                item.teaser = entry.getElementsByTagName('description')[0].firstChild.nodeValue
+            except IndexError:
+                item.teaser = ''
 
 
-        date_published = entry.getElementsByTagName('pubDate')[0].firstChild.nodeValue
-            
+    # @@TODO: get category
+    #item.categories = entry.getElementsByTagName('category')
+
+    try:
+        date_published = entry.getElementsByTagName('published')[0].firstChild.nodeValue
+    except IndexError:
+        try:
+            date_published = entry.getElementsByTagName('pubDate')[0].firstChild.nodeValue
+        except IndexError:
+            date_published = entry.getElementsByTagName('updated')[0].firstChild.nodeValue
+
+    # get date
+    try:
+        # 2008-10-27T11:06:52 (ignore time zone)
+        date_published = datetime(*(time.strptime(date_published[:19], '%Y-%m-%dT%H:%M:%S')[0:6]))
+    except ValueError:
         try:
             # Sun, 08 Feb 2009 22:48:25 (ignore time zone)
             date_published = datetime(*(time.strptime(date_published[:25], '%a, %d %b %Y %H:%M:%S')[0:6]))
         except ValueError:
             date_published = datetime.now()
-        
 
-        item.date_published = date_published
-        
-        items.append(item)
-        
-    return items
-    
-# -----------------------------------------------------------
+    item.date_published = date_published
+
+    return item
+
 
 def parse_feed(the_feed):
     
