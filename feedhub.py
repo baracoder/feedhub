@@ -22,13 +22,15 @@ def generate_html(items):
 
     return s
 
-
-if __name__ == "__main__":
+def feedhub():
     items = []
     for feed in FEEDS:
         items.extend(feed.parse_feed())
     items.sort(key=lambda i : i.date_published, reverse=True)
 
     html = generate_html(items[:config.LIMIT]).encode('utf-8', 'replace')
-    print html
+    return html
+
+if __name__ == "__main__":
+    print feedhub()
 
