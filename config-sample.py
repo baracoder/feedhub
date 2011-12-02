@@ -1,11 +1,12 @@
-DELICIOUS, TWITTER, BLOG, GPLUS = range(4)
-LIMIT = 10
-TEASER_LEN = 280
+from feeds.default import Feed
 
+LIMIT = 50
 FEEDS = [
-    # type (BLOG|TWITTER|DELICIOUS), site, feed url and flavor (atom|rss)
-#    (BLOG, 'http://someblog.com/', 'http://someblog.com/feed/', 'atom'),
-#    (DELICIOUS, 'http://delicious.com/username', 'http://feeds.delicious.com/v2/rss/username?count=15', 'rss'),
-    (TWITTER, 'http://twitter.com/passiomatc', 'http://twitter.com/statuses/user_timeline/14973295.atom', 'atom'),
+    # add your feeds here
+    # Feed(URL,TITLE,CSS_CLASS),
+    # examples:
+    #Feed('http://twitter.com/statuses/user_timeline/55714996.rss','twitter','twitter'),
+    #Feed('http://plusfeed.appspot.com/105123658415843460405','google+','gplus'),
+    #Feed('http://api.flickr.com/services/feeds/photos_public.gne?id=15622444@N04&lang=en-us&format=rss_200','flickr','flickr'),
 ]
 
